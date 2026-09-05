@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# Node & Frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Logs and Downloads
+downloads/
+*.log
+*.jsonl
+*.tmp
+*.mp4
+*.mkv
+*.webm
+*.part
+*.ytdl
+
+# Secrets and Environment
+.env
+.env.*
+*.pem
+*.key
+*.id_rsa
+*.ed25519
+
+# OS / Editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
