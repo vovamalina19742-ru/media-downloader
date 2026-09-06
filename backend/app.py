@@ -22,6 +22,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from extractor import analyze_media_url, check_ram_spillover
+from summarizer import extract_transcript, generate_heuristic_summary
 
 # Setup structured logging
 LOG_DIR = os.path.abspath(r"downloads\logs")
@@ -368,4 +369,65 @@ async def queue_endpoint():
         "completed_tasks_count": sum(1 for t in TASKS_DB.values() if t["status"] == "completed"),
         "local_ram_usage_percent": mem.percent,
         "remote_node_status": REMOTE_NODE_STATUS
+    }
+
+
+class SummarizeRequest(BaseModel):
+    url: str
+    preferred_lang: List[str] = ["ru", "en"]
+
+
+@app.post("/api/transcript")
+async def transcript_endpoint(req: SummarizeRequest):
+    """
+    Extracts raw clean subtitles/transcripts without downloading video file.
+    """
+    logger.info(f"[API /transcript] Extracting transcript for {req.url}")
+    result = extract_transcript(req.url, req.preferred_lang)
+    return result
+
+
+@app.post("/api/summarize")
+async def summarize_endpoint(req: SummarizeRequest):
+    """
+    Extracts transcript and generates structured AI summary with chapters and key takeaways.
+    """
+    logger.info(f"[API /summarize] Generating AI summary for {req.url}")
+    t_data = extract_transcript(req.url, req.preferred_lang)
+    if t_data.get("status") != "success":
+        return t_data
+    
+    summary = generate_heuristic_summary(
+        title=t_data.get("title", "Untitled Video"),
+        transcript=t_data.get("full_transcript", ""),
+        duration_sec=t_data.get("duration_sec", 0)
+    )
+    
+    # Save summary as .md artifact in downloads/media/
+    save_dir = os.path.abspath(r"downloads\media")
+    os.makedirs(save_dir, exist_ok=True)
+    safe_title = "".join(c for c in t_data.get("title", "summary") if c.isalnum() or c in (' ', '_', '-')).rstrip()
+    md_file_path = os.path.join(save_dir, f"{safe_title}_summary.md")
+    
+    try:
+        with open(md_file_path, "w", encoding="utf-8") as f:
+            f.write(f"# 🧠 ИИ-Конспект: {summary['title']}\n\n")
+            f.write(f"⏱ **Длительность:** {summary['duration_formatted']}\n\n")
+            f.write("## 📌 Краткое содержание (TL;DR)\n")
+            for p in summary["tldr"]:
+                f.write(f"- {p}\n")
+            f.write("\n## 📑 Главы и таймкоды\n")
+            for ch in summary["chapters"]:
+                f.write(f"- `[{ch['timestamp']}]` **{ch['title']}:** {ch['summary']}\n")
+            f.write("\n## 💡 Ключевые выводы\n")
+            for kw in summary["key_takeaways"]:
+                f.write(f"- {kw}\n")
+        summary["saved_md_path"] = md_file_path
+    except Exception as e:
+        logger.error(f"Failed to write summary markdown: {e}")
+
+    return {
+        "status": "success",
+        "summary": summary,
+        "transcript_preview": t_data.get("transcript_preview")
     }

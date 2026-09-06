@@ -1,12 +1,13 @@
-# ⚡ Media Downloader Desktop (v2.4)
+# ⚡ Media Downloader Desktop (v2.5)
 
-> **High-Performance Multi-Threaded Video & Stream Harvester with Adaptive Backpressure & Hardware Offloading.**
+> **High-Performance Multi-Threaded Video & Stream Harvester with Zero-Cost AI Summarizer & Hardware Offloading.**
 > *Built with FastAPI (Python) + React (TypeScript/Tailwind CSS) + Rust-First Architecture.*
 
 ---
 
 ## 🚀 Key Features
 
+* **🧠 Zero-Cost AI Summarizer & Transcript Extractor:** Lightning-fast subtitle extraction (YouTube VTT/JSON3/SRT) without downloading full video files. Generates structured TL;DR summaries, interactive clickable timestamps, and one-click Markdown export (`Copy MD` / `*_summary.md`) for Obsidian, Notion, and Telegram.
 * **🏎️ Adaptive Backpressure 2.0:** Real-time RAM & disk monitoring with automatic buffer-to-disk spillover prevention.
 * **🌐 HLS (.m3u8) / DASH (.mpd) Harvester:** Fast multi-threaded chunk downloading with atomic stream reassembly.
 * **🛡️ Security Guardrails:** Strict Path Traversal validation (`canonicalize`), 0 telemetry leaks, and non-destructive operations.

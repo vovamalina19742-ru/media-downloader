@@ -43,3 +43,26 @@ export interface QueueTelemetryOutput {
   remote_node_status: 'offline' | 'waking' | 'online' | 'sleeping';
   remote_node_ping_ms?: number;
 }
+
+export interface VideoChapter {
+  timestamp: string;
+  seconds: number;
+  title: string;
+  summary: string;
+}
+
+export interface VideoSummary {
+  title: string;
+  duration_formatted: string;
+  tldr: string[];
+  chapters: VideoChapter[];
+  key_takeaways: string[];
+  saved_md_path?: string;
+}
+
+export interface SummarizeOutput {
+  status: 'success' | 'no_subtitles' | 'error';
+  summary?: VideoSummary;
+  transcript_preview?: string;
+  error_message?: string;
+}
