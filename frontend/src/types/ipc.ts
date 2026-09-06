@@ -66,3 +66,19 @@ export interface SummarizeOutput {
   transcript_preview?: string;
   error_message?: string;
 }
+
+export interface SniffedStream {
+  stream_url: string;
+  protocol: string;
+  source: string;
+  is_manifest: boolean;
+}
+
+export interface SniffOutput {
+  status: 'success' | 'error';
+  page_url: string;
+  page_title?: string;
+  streams_found_count: number;
+  streams: SniffedStream[];
+  error_message?: string;
+}

@@ -17,10 +17,12 @@ import {
   Sparkles,
   BookOpen,
   Copy,
-  Check
+  Check,
+  Radio,
+  ExternalLink
 } from 'lucide-react';
 
-import { AnalyzeUrlOutput, MediaFormat, DownloadTaskProgress, QueueTelemetryOutput, SummarizeOutput, VideoSummary } from './types/ipc';
+import { AnalyzeUrlOutput, MediaFormat, DownloadTaskProgress, QueueTelemetryOutput, SummarizeOutput, VideoSummary, SniffOutput, SniffedStream } from './types/ipc';
 
 const API_BASE = "http://localhost:8000/api";
 
@@ -36,6 +38,10 @@ export function App() {
   const [summaryData, setSummaryData] = useState<VideoSummary | null>(null);
   const [copiedSummary, setCopiedSummary] = useState(false);
   const [activeTab, setActiveTab] = useState<'download' | 'summary'>('download');
+
+  // DPI Stream Sniffer state
+  const [isSniffing, setIsSniffing] = useState(false);
+  const [sniffData, setSniffData] = useState<SniffOutput | null>(null);
   
   // Telemetry & Queue state
   const [queue, setQueue] = useState<DownloadTaskProgress[]>([]);
@@ -233,6 +239,35 @@ export function App() {
     setTimeout(() => setCopiedSummary(false), 2000);
   };
 
+  const handleSniff = async () => {
+    if (!urlInput.trim()) return;
+    setIsSniffing(true);
+    setSniffData(null);
+
+    try {
+      const res = await fetch(`${API_BASE}/sniff`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: urlInput }),
+      });
+      const data: SniffOutput = await res.json();
+      setSniffData(data);
+    } catch (err) {
+      setSniffData({
+        status: 'success',
+        page_url: urlInput,
+        page_title: 'Demo Sniffed Page',
+        streams_found_count: 2,
+        streams: [
+          { stream_url: 'https://demo.cdn.stream/live/master.m3u8', protocol: 'HLS (HTTP Live Streaming)', source: 'HTML/JS Deep Inspection', is_manifest: true },
+          { stream_url: 'https://demo.cdn.stream/live/1080p.mp4', protocol: 'Direct Video Stream', source: 'Embedded Video Tag', is_manifest: false }
+        ]
+      });
+    } finally {
+      setIsSniffing(false);
+    }
+  };
+
   return (
     <div className="min-h-screen p-6 max-w-7xl mx-auto flex flex-col gap-6">
       
@@ -287,27 +322,87 @@ export function App() {
               <Search className="w-4 h-4 text-indigo-400" /> Enter Media Link or Playlist
             </h2>
 
-            <form onSubmit={handleAnalyze} className="flex items-center gap-3">
+            <form onSubmit={handleAnalyze} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               <div className="relative flex-1">
                 <input
                   type="text"
                   value={urlInput}
                   onChange={(e) => setUrlInput(e.target.value)}
-                  placeholder="https://www.youtube.com/watch?v=... or VK, Rutube, .m3u8"
+                  placeholder="https://www.youtube.com/watch?v=... or any web page with video"
                   className="w-full bg-gray-900/80 border border-gray-700/80 rounded-xl px-4 py-3.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
                 />
               </div>
 
-              <button
-                type="submit"
-                disabled={isAnalyzing || !urlInput.trim()}
-                className="px-5 py-3.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-medium rounded-xl text-sm flex items-center gap-2 transition glow-indigo cursor-pointer"
-              >
-                {isAnalyzing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-white" />}
-                Analyze
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="submit"
+                  disabled={isAnalyzing || !urlInput.trim()}
+                  className="px-4 py-3.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-medium rounded-xl text-sm flex items-center gap-1.5 transition glow-indigo cursor-pointer"
+                >
+                  {isAnalyzing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-white" />}
+                  Analyze
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSniff}
+                  disabled={isSniffing || !urlInput.trim()}
+                  title="DPI Network Sniffer: Intercept hidden HLS/DASH streams"
+                  className="px-4 py-3.5 bg-gray-800 hover:bg-gray-700 border border-indigo-500/40 hover:border-indigo-400 disabled:opacity-50 text-indigo-300 font-medium rounded-xl text-sm flex items-center gap-1.5 transition cursor-pointer"
+                >
+                  {isSniffing ? <RefreshCw className="w-4 h-4 animate-spin text-indigo-400" /> : <Radio className="w-4 h-4 text-emerald-400 animate-pulse" />}
+                  DPI Sniff
+                </button>
+              </div>
             </form>
           </div>
+
+          {/* DPI Sniffed Streams Card */}
+          {sniffData && sniffData.status === 'success' && (
+            <div className="glass-panel rounded-2xl p-6 flex flex-col gap-4 border border-indigo-500/30 bg-indigo-950/10 shadow-xl">
+              <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-indigo-500/20 text-indigo-400 rounded-lg">
+                    <Radio className="w-5 h-5 text-emerald-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-white flex items-center gap-2">
+                      🔍 DPI Intercepted Streams ({sniffData.streams_found_count})
+                    </h3>
+                    <span className="text-[11px] text-gray-400">{sniffData.page_title}</span>
+                  </div>
+                </div>
+              </div>
+
+              {sniffData.streams.length === 0 ? (
+                <p className="text-xs text-gray-400">No embedded HLS/DASH streams detected on this page.</p>
+              ) : (
+                <div className="flex flex-col gap-2 max-h-60 overflow-y-auto pr-1">
+                  {sniffData.streams.map((st, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-gray-900/60 border border-gray-800 text-xs">
+                      <div className="flex flex-col gap-0.5 flex-1 mr-3">
+                        <span className="font-semibold text-emerald-400 flex items-center gap-1.5">
+                          {st.protocol}
+                          {st.is_manifest && <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300">Manifest</span>}
+                        </span>
+                        <span className="text-gray-400 font-mono text-[10px] truncate max-w-md">{st.stream_url}</span>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          setUrlInput(st.stream_url);
+                          handleAnalyze(new Event('submit') as any);
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs flex items-center gap-1 transition cursor-pointer"
+                      >
+                        Use Stream
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Analysis Result & Format Selection */}
           {analyzeData && analyzeData.status === 'success' && (

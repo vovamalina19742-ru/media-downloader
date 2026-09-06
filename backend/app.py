@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field
 
 from extractor import analyze_media_url, check_ram_spillover
 from summarizer import extract_transcript, generate_heuristic_summary
+from sniffer import sniff_page_streams
 
 # Setup structured logging
 LOG_DIR = os.path.abspath(r"downloads\logs")
@@ -431,3 +432,17 @@ async def summarize_endpoint(req: SummarizeRequest):
         "summary": summary,
         "transcript_preview": t_data.get("transcript_preview")
     }
+
+
+class SniffRequest(BaseModel):
+    url: str
+
+
+@app.post("/api/sniff")
+async def sniff_endpoint(req: SniffRequest):
+    """
+    DPI-inspired Network & HTML Stream Sniffer: intercepts embedded HLS/DASH/MP4 streams.
+    """
+    logger.info(f"[API /sniff] Sniffing streams on {req.url}")
+    result = sniff_page_streams(req.url)
+    return result
