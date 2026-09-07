@@ -190,14 +190,33 @@ def generate_heuristic_summary(title: str, transcript: str, duration_sec: int) -
         meaningful_sentences[min(2, len(meaningful_sentences)-1)] if len(meaningful_sentences) > 2 else "Практическая демонстрация и выводы."
     ]
 
+    # Extract source-grounded quotes and insights
+    grounded_quotes = []
+    insight_patterns = [
+        re.compile(r'(?:главный\s+вывод|самое\s+важное|обратите\s+внимание|ключевая\s+фишка|в\s+итоге|поэтому)\s*[:\-—]?\s*([^.!?]{20,150}[.!?])', re.IGNORECASE),
+        re.compile(r'(?:мы\s+протестировали|результаты\s+теста|производительность|скорость\s+составила)\s*[:\-—]?\s*([^.!?]{20,150}[.!?])', re.IGNORECASE),
+        re.compile(r'(?:ссылка\s+на|репозиторий|исходный\s+код|скачать\s+можно)\s*[:\-—]?\s*([^.!?]{15,120}[.!?])', re.IGNORECASE)
+    ]
+    for pattern in insight_patterns:
+        for m in pattern.finditer(transcript):
+            grounded_quotes.append({
+                "quote": m.group(0).strip(),
+                "char_start": m.start(),
+                "char_end": m.end(),
+                "highlight": m.group(1).strip() if m.lastindex else m.group(0).strip()
+            })
+
     return {
         "title": title,
         "duration_formatted": f"{duration_sec // 60}m {duration_sec % 60}s",
         "tldr": tldr_points,
         "chapters": chapters,
+        "grounded_quotes": grounded_quotes[:5],
         "key_takeaways": [
             "Автоматически очищено от служебных JSON/VTT тегов и сжато в человеческий текст.",
             "Кликабельные таймкоды позволяют мгновенно перейти к нужной части видео.",
+            "Точная привязка цитат к расшифровке (Source Grounding без галлюцинаций).",
             "Готовый конспект для сохранения в базу знаний (Markdown/Obsidian/Notion)."
         ]
     }
+

@@ -420,12 +420,17 @@ async def summarize_endpoint(req: SummarizeRequest):
             f.write("\n## 📑 Главы и таймкоды\n")
             for ch in summary["chapters"]:
                 f.write(f"- `[{ch['timestamp']}]` **{ch['title']}:** {ch['summary']}\n")
-            f.write("\n## 💡 Ключевые выводы\n")
+            if summary.get("grounded_quotes"):
+                f.write("\n## 🎯 Доказательные цитаты спикера (Source Grounding)\n")
+                for gq in summary["grounded_quotes"]:
+                    f.write(f"> «{gq['quote']}»\n\n")
+            f.write("## 💡 Ключевые выводы\n")
             for kw in summary["key_takeaways"]:
                 f.write(f"- {kw}\n")
         summary["saved_md_path"] = md_file_path
     except Exception as e:
         logger.error(f"Failed to write summary markdown: {e}")
+
 
     return {
         "status": "success",
