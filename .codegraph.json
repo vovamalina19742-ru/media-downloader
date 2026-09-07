@@ -1,0 +1,123 @@
+{
+  "project": "media-downloader",
+  "stack": "FastAPI + yt-dlp + React/TS + Rust/Tauri Architecture",
+  "files_indexed": 10,
+  "nodes": [
+    {
+      "id": "backend/app.py",
+      "path": "backend/app.py",
+      "type": "Backend Engine",
+      "functions": [
+        "log_telemetry_event",
+        "validate_guardrails_path",
+        "ping_remote_node",
+        "check",
+        "async_wake_remote_node",
+        "atomic_sftp_download",
+        "run_local_download_task",
+        "progress_hook",
+        "read_root",
+        "analyze_endpoint",
+        "start_download_endpoint",
+        "offload_endpoint",
+        "queue_endpoint",
+        "transcript_endpoint",
+        "summarize_endpoint",
+        "sniff_endpoint"
+      ],
+      "endpoints": [
+        "GET /",
+        "POST /api/analyze",
+        "POST /api/download",
+        "POST /api/offload",
+        "GET /api/queue",
+        "POST /api/transcript",
+        "POST /api/summarize",
+        "POST /api/sniff"
+      ]
+    },
+    {
+      "id": "backend/extractor.py",
+      "path": "backend/extractor.py",
+      "type": "Backend Engine",
+      "functions": [
+        "check_ram_spillover",
+        "analyze_media_url"
+      ],
+      "endpoints": []
+    },
+    {
+      "id": "backend/sniffer.py",
+      "path": "backend/sniffer.py",
+      "type": "Backend Engine",
+      "functions": [
+        "classify_stream_protocol",
+        "sniff_page_streams"
+      ],
+      "endpoints": []
+    },
+    {
+      "id": "backend/summarizer.py",
+      "path": "backend/summarizer.py",
+      "type": "Backend Engine",
+      "functions": [
+        "clean_raw_subtitles",
+        "extract_transcript",
+        "generate_heuristic_summary"
+      ],
+      "endpoints": []
+    },
+    {
+      "id": "frontend/postcss.config.js",
+      "path": "frontend/postcss.config.js",
+      "type": "Frontend Component"
+    },
+    {
+      "id": "frontend/tailwind.config.js",
+      "path": "frontend/tailwind.config.js",
+      "type": "Frontend Component"
+    },
+    {
+      "id": "frontend/vite.config.ts",
+      "path": "frontend/vite.config.ts",
+      "type": "Frontend Component"
+    },
+    {
+      "id": "frontend/src/App.tsx",
+      "path": "frontend/src/App.tsx",
+      "type": "Frontend Component"
+    },
+    {
+      "id": "frontend/src/main.tsx",
+      "path": "frontend/src/main.tsx",
+      "type": "Frontend Component"
+    },
+    {
+      "id": "frontend/src/types/ipc.ts",
+      "path": "frontend/src/types/ipc.ts",
+      "type": "Frontend Component"
+    }
+  ],
+  "core_pipeline_flows": [
+    {
+      "from": "frontend/index.html",
+      "to": "backend/app.py",
+      "relation": "REST / WebSocket IPC calls"
+    },
+    {
+      "from": "backend/app.py",
+      "to": "backend/extractor.py",
+      "relation": "media metadata extraction"
+    },
+    {
+      "from": "backend/app.py",
+      "to": "backend/summarizer.py",
+      "relation": "transcript & LangExtract grounding"
+    },
+    {
+      "from": "backend/app.py",
+      "to": "backend/sniffer.py",
+      "relation": "DPI network stream interception"
+    }
+  ]
+}
