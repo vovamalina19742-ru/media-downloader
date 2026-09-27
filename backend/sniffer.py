@@ -12,11 +12,35 @@ import re
 import json
 import logging
 from typing import Dict, Any, List, Optional
+import ipaddress
+import socket
 from urllib.parse import urlparse, urljoin
 import requests
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("sniffer")
+
+def is_safe_public_url(target_url: str) -> bool:
+    """Validates that a URL uses http/https and does not resolve to private/loopback/link-local addresses."""
+    try:
+        parsed = urlparse(target_url)
+        if parsed.scheme not in ("http", "https"):
+            return False
+        hostname = parsed.hostname
+        if not hostname:
+            return False
+        if hostname.lower() in ("localhost", "127.0.0.1", "::1", "metadata.google.internal"):
+            return False
+        addr_infos = socket.getaddrinfo(hostname, None)
+        for addr_info in addr_infos:
+            ip_str = addr_info[4][0]
+            ip_obj = ipaddress.ip_address(ip_str)
+            if (ip_obj.is_private or ip_obj.is_loopback or 
+                ip_obj.is_link_local or ip_obj.is_reserved or ip_obj.is_multicast):
+                return False
+        return True
+    except Exception:
+        return False
 
 # Protocol signatures (L7 DPI Signatures)
 STREAM_SIGNATURES = {
@@ -63,8 +87,13 @@ def sniff_page_streams(page_url: str, user_agent: Optional[str] = None) -> Dict[
         'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
     }
 
-    discovered_streams = []
-    seen_urls = set()
+    if not is_safe_public_url(page_url):
+        logger.warning(f"[Security] Blocked unsafe or internal URL in sniffer: {page_url}")
+        return {
+            "status": "error",
+            "error_code": "SSRF_BLOCKED",
+            "error_message": "URL targets private, loopback, or invalid network address."
+        }
 
     try:
         resp = requests.get(page_url, headers=headers, timeout=12)

@@ -35,10 +35,17 @@ logger = logging.getLogger("app")
 
 app = FastAPI(title="Media Downloader Engine", version="2.4.0")
 
-# Enable CORS for React Frontend
+# Enable CORS for React Frontend (restricted to local dev & desktop origins)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:1420",
+        "http://127.0.0.1:1420",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "tauri://localhost"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -91,8 +98,13 @@ def validate_guardrails_path(save_path: str) -> str:
     """
     abs_path = os.path.realpath(save_path)
     allowed_root = os.path.abspath(os.getenv("MEDIA_DOWNLOAD_ROOT", os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-    
-    if not abs_path.startswith(allowed_root):
+    try:
+        common = os.path.commonpath([allowed_root, abs_path])
+        is_safe = (common == allowed_root)
+    except (ValueError, Exception):
+        is_safe = False
+
+    if not is_safe:
         logger.error(f"[Guardrails DENIED] Path traversal attempt blocked: {abs_path}")
         raise HTTPException(
             status_code=400,
